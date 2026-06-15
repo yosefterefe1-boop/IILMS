@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IILMS — Stock Alerts</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #f0f2f5; }
+        .topbar { background: #1e3a5f; color: white; padding: 0.7rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+        .topbar .brand { font-weight: 700; font-size: 1rem; }
+        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; font-size: 0.85rem; }
+        .topbar a { color: #93c5fd; text-decoration: none; }
+        .topbar a:hover { color: white; }
+        .role-badge { padding: 0.2rem 0.55rem; border-radius: 20px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+        .role-admin   { background: #7c3aed; }
+        .role-manager { background: #059669; }
+        .alert-count { background: #dc2626; color: white; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 700; }
+        .content { padding: 1.2rem 1.5rem; max-width: 1000px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 1.1rem 1.4rem; margin-bottom: 1.2rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .card h2 { font-size: 0.95rem; color: #1e3a5f; margin-bottom: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        th { background: #f1f5f9; text-align: left; padding: 0.55rem 0.7rem; border-bottom: 2px solid #e2e8f0; color: #475569; font-size: 0.78rem; text-transform: uppercase; }
+        td { padding: 0.5rem 0.7rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .btn { padding: 0.35rem 0.8rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
+        .btn-ack { background: #059669; color: white; }
+        .btn-ack:hover { background: #047857; }
+        .flash { padding: 0.65rem 1rem; border-radius: 6px; margin-bottom: 0.9rem; font-size: 0.9rem; background: #dbeafe; color: #1e40af; }
+        .badge-pending { background: #fee2e2; color: #dc2626; font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 3px; }
+        .badge-acked   { background: #dcfce7; color: #15803d; font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 3px; }
+        .empty { text-align: center; padding: 2rem; color: #94a3b8; font-style: italic; }
+        .section-title { font-size: 0.82rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin: 1rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="brand">IILMS</span>
+    <div class="topbar-right">
+        <a href="/">Dashboard</a>
+        {% if current_user.role == 'admin' %}<a href="/users">Users</a>{% endif %}
+        <a href="/alerts">
+            Alerts
+            {% if unacked_alerts > 0 %}<span class="alert-count">{{ unacked_alerts }}</span>{% endif %}
+        </a>
+        <span class="role-badge role-{{ current_user.role }}">{{ current_user.role }}</span>
+        <span>{{ current_user.username }}</span>
+        <a href="/logout">Log Out</a>
+    </div>
+</div>
+
+<div class="content">
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}{% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <h2>Stock Alert Log</h2>
+
+        {% set pending = alerts | selectattr('acknowledged', 'equalto', false) | list %}
+        {% set acked   = alerts | selectattr('acknowledged', 'equalto', true)  | list %}
+
+        <div class="section-title">Pending — {{ pending | length }} unacknowledged</div>
+        {% if pending %}
+        <table>
+            <thead>
+                <tr><th>Time</th><th>Item</th><th>Qty at Alert</th><th>Threshold</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+            {% for a in pending %}
+            <tr style="background:#fff7ed;">
+                <td>{{ a.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td><strong>{{ a.item_name }}</strong></td>
+                <td style="color:#dc2626; font-weight:700;">{{ a.qty_at_alert }}</td>
+                <td>{{ a.threshold }}</td>
+                <td><span class="badge-pending">Pending</span></td>
+                <td>
+                    <form method="POST" action="/alerts/{{ a.id }}/acknowledge">
+                        <button type="submit" class="btn btn-ack">Acknowledge</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty">No pending alerts. All stock levels are normal.</p>
+        {% endif %}
+
+        {% if acked %}
+        <div class="section-title" style="margin-top:1.5rem;">Acknowledged History — {{ acked | length }}</div>
+        <table>
+            <thead>
+                <tr><th>Time</th><th>Item</th><th>Qty at Alert</th><th>Threshold</th><th>Acknowledged By</th><th>Acknowledged At</th></tr>
+            </thead>
+            <tbody>
+            {% for a in acked %}
+            <tr>
+                <td>{{ a.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ a.item_name }}</td>
+                <td>{{ a.qty_at_alert }}</td>
+                <td>{{ a.threshold }}</td>
+                <td><span class="badge-acked">{{ a.acknowledged_by }}</span></td>
+                <td>{{ a.acknowledged_at.strftime('%Y-%m-%d %H:%M') if a.acknowledged_at else '—' }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+    </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login — IILMS</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .box { background: white; padding: 2.5rem; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); width: 360px; }
+        h2 { color: #1e3a5f; margin-bottom: 0.25rem; }
+        .subtitle { color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        label { display: block; font-size: 0.82rem; font-weight: 600; color: #475569; margin-bottom: 0.3rem; }
+        input { display: block; width: 100%; padding: 0.55rem 0.75rem; margin-bottom: 1rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; }
+        input:focus { outline: none; border-color: #2563eb; }
+        button { width: 100%; padding: 0.65rem; background: #1e3a5f; color: white; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+        button:hover { background: #2563eb; }
+        .error { background: #fee2e2; color: #991b1b; padding: 0.6rem 0.8rem; border-radius: 6px; font-size: 0.88rem; margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h2>IILMS</h2>
+    <p class="subtitle">Integrated Inventory Locator and Management System</p>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for m in messages %}<div class="error">{{ m }}</div>{% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <label>Username</label>
+        <input type="text" name="username" required autofocus>
+        <label>Password</label>
+        <input type="password" name="password" required>
+        <button type="submit">Log In</button>
+    </form>
+
+</div>
+</body>
+</html>

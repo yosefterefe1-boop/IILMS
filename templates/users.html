@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IILMS — User Management</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #f0f2f5; }
+        .topbar { background: #1e3a5f; color: white; padding: 0.7rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+        .topbar .brand { font-weight: 700; font-size: 1rem; }
+        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; font-size: 0.85rem; }
+        .topbar a { color: #93c5fd; text-decoration: none; }
+        .topbar a:hover { color: white; }
+        .role-badge { padding: 0.2rem 0.55rem; border-radius: 20px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+        .role-admin { background: #7c3aed; }
+        .alert-count { background: #dc2626; color: white; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 700; }
+        .content { padding: 1.2rem 1.5rem; max-width: 800px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 1.1rem 1.4rem; margin-bottom: 1.2rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .card h2 { font-size: 0.95rem; color: #1e3a5f; margin-bottom: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .form-row { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; gap: 0.2rem; }
+        .form-group label { font-size: 0.75rem; color: #64748b; font-weight: 600; }
+        input[type=text], input[type=password], select { padding: 0.4rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 0.88rem; }
+        input:focus, select:focus { outline: none; border-color: #2563eb; }
+        .btn { padding: 0.42rem 1rem; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+        .btn-blue   { background: #2563eb; color: white; }
+        .btn-danger { background: #dc2626; color: white; font-size: 0.78rem; padding: 0.3rem 0.7rem; }
+        .btn-blue:hover   { background: #1d4ed8; }
+        .btn-danger:hover { background: #b91c1c; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        th { background: #f1f5f9; text-align: left; padding: 0.55rem 0.7rem; border-bottom: 2px solid #e2e8f0; color: #475569; font-size: 0.78rem; text-transform: uppercase; }
+        td { padding: 0.5rem 0.7rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+        .flash { padding: 0.65rem 1rem; border-radius: 6px; margin-bottom: 0.9rem; font-size: 0.9rem; background: #dbeafe; color: #1e40af; }
+        .role-pill { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 10px; text-transform: uppercase; }
+        .role-admin   { background: #ede9fe; color: #6d28d9; }
+        .role-manager { background: #dcfce7; color: #15803d; }
+        .role-clerk   { background: #dbeafe; color: #1d4ed8; }
+        .role-sales   { background: #f1f5f9; color: #475569; }
+        .you { font-size: 0.75rem; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="brand">IILMS</span>
+    <div class="topbar-right">
+        <a href="/">Dashboard</a>
+        <a href="/alerts">
+            Alerts
+            {% if unacked_alerts > 0 %}<span class="alert-count">{{ unacked_alerts }}</span>{% endif %}
+        </a>
+        <a href="/users">Users</a>
+        <span class="role-badge role-admin">admin</span>
+        <span>{{ current_user.username }}</span>
+        <a href="/logout">Log Out</a>
+    </div>
+</div>
+
+<div class="content">
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}{% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <h2>Create New User</h2>
+        <form method="POST" action="/users/add">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Username *</label>
+                    <input type="text" name="username" placeholder="username" required style="width:140px;">
+                </div>
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input type="password" name="password" placeholder="password" required style="width:140px;">
+                </div>
+                <div class="form-group">
+                    <label>Role *</label>
+                    <select name="role" style="width:120px;">
+                        <option value="sales">Sales Staff</option>
+                        <option value="clerk">Inventory Clerk</option>
+                        <option value="manager">Manager</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-blue">Create User</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2>All Users — {{ users | length }} accounts</h2>
+        <table>
+            <thead>
+                <tr><th>Username</th><th>Role</th><th>Permissions</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+            {% for user in users %}
+            <tr>
+                <td>
+                    <strong>{{ user.username }}</strong>
+                    {% if user.id == current_user.id %}<span class="you">(you)</span>{% endif %}
+                </td>
+                <td>
+                    <span class="role-pill role-{{ user.role }}">{{ user.role }}</span>
+                </td>
+                <td style="color:#64748b; font-size:0.82rem;">
+                    {% if user.role == 'admin' %}
+                        Search, Checkout, Restock, Enroll, Reports, Alerts, User Management
+                    {% elif user.role == 'manager' %}
+                        Search, Checkout, Restock, Enroll, Reports, Alerts
+                    {% elif user.role == 'clerk' %}
+                        Search, Checkout, Restock, Enroll items
+                    {% else %}
+                        Search &amp; Checkout only
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user.id != current_user.id %}
+                    <form method="POST" action="/users/delete/{{ user.id }}"
+                          onsubmit="return confirm('Delete user {{ user.username }}?');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                    {% else %}
+                    <span style="color:#94a3b8; font-size:0.8rem;">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

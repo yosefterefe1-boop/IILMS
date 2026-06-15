@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>IILMS — Dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: sans-serif; background: #f0f2f5; }
+
+        .topbar { background: #1e3a5f; color: white; padding: 0.7rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+        .topbar .brand { font-weight: 700; font-size: 1rem; white-space: nowrap; margin-right: 0.5rem; }
+        .search-form { flex: 1; display: flex; gap: 0.4rem; max-width: 420px; }
+        .search-form input { flex: 1; padding: 0.4rem 0.7rem; border: none; border-radius: 5px; font-size: 0.9rem; }
+        .search-form button { padding: 0.4rem 0.9rem; background: #2563eb; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem; }
+        .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 0.9rem; font-size: 0.85rem; }
+        .topbar a { color: #93c5fd; text-decoration: none; }
+        .topbar a:hover { color: white; }
+        .role-badge { padding: 0.2rem 0.55rem; border-radius: 20px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+        .role-admin   { background: #7c3aed; }
+        .role-manager { background: #059669; }
+        .role-clerk   { background: #2563eb; }
+        .role-sales   { background: #475569; }
+        .alert-badge { background: #dc2626; color: white; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 700; }
+
+        .content { padding: 1.2rem 1.5rem; max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 8px; padding: 1.1rem 1.4rem; margin-bottom: 1.2rem; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+        .card h2 { font-size: 0.95rem; color: #1e3a5f; margin-bottom: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        .form-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; gap: 0.2rem; }
+        .form-group label { font-size: 0.75rem; color: #64748b; font-weight: 600; }
+        input[type=text], input[type=number], select { padding: 0.4rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 0.88rem; }
+        input:focus, select:focus { outline: none; border-color: #2563eb; }
+        .btn { padding: 0.42rem 1rem; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+        .btn-blue  { background: #2563eb; color: white; }
+        .btn-green { background: #059669; color: white; }
+        .btn-amber { background: #d97706; color: white; }
+        .btn-blue:hover  { background: #1d4ed8; }
+        .btn-green:hover { background: #047857; }
+        .btn-amber:hover { background: #b45309; }
+
+        .flash { padding: 0.65rem 1rem; border-radius: 6px; margin-bottom: 0.9rem; font-size: 0.9rem; }
+        .flash.error { background: #fee2e2; color: #991b1b; }
+        .flash.info  { background: #dbeafe; color: #1e40af; }
+
+        .role-info { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 0.7rem 1rem; border-radius: 0 6px 6px 0; font-size: 0.88rem; color: #92400e; margin-bottom: 1.2rem; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.87rem; }
+        th { background: #f1f5f9; text-align: left; padding: 0.55rem 0.7rem; border-bottom: 2px solid #e2e8f0; color: #475569; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+        td { padding: 0.5rem 0.7rem; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+
+        tr.status-low  td { background: #fef9c3; }
+        tr.status-out  td { background: #fee2e2; }
+
+        .status-badge { font-size: 0.72rem; font-weight: 700; padding: 0.15rem 0.45rem; border-radius: 3px; white-space: nowrap; }
+        .badge-normal { background: #dcfce7; color: #15803d; }
+        .badge-low    { background: #fef9c3; color: #92400e; }
+        .badge-out    { background: #fee2e2; color: #dc2626; }
+
+        .specs-cell { max-width: 180px; color: #64748b; font-size: 0.82rem; }
+        .no-results { text-align: center; padding: 2rem; color: #94a3b8; font-style: italic; }
+
+        .log-table th, .log-table td { font-size: 0.82rem; }
+
+        .action-cell { display: flex; flex-direction: column; gap: 0.35rem; }
+        .mini-form { display: flex; gap: 0.3rem; align-items: center; }
+        .mini-form input[type=number] { width: 56px; }
+        .mini-form input[type=text]   { width: 100px; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <span class="brand">IILMS</span>
+    <form class="search-form" method="GET" action="/">
+        <input type="text" name="q" placeholder="Search by name, SKU, category, specs…"
+               value="{{ search_query }}" autofocus>
+        <button type="submit">Search</button>
+    </form>
+    <div class="topbar-right">
+        {% if current_user.role in ['manager', 'admin'] and unacked_alerts > 0 %}
+            <a href="/alerts">Alerts <span class="alert-badge">{{ unacked_alerts }}</span></a>
+        {% elif current_user.role in ['manager', 'admin'] %}
+            <a href="/alerts">Alerts</a>
+        {% endif %}
+        {% if current_user.role == 'admin' %}
+            <a href="/users">Users</a>
+        {% endif %}
+        {% if current_user.role in ['manager', 'admin'] %}
+            <a href="/export/csv">CSV</a>
+            <a href="/export/pdf">PDF</a>
+        {% endif %}
+        <span class="role-badge role-{{ current_user.role }}">{{ current_user.role }}</span>
+        <span>{{ current_user.username }}</span>
+        <a href="/logout">Log Out</a>
+    </div>
+</div>
+
+<div class="content">
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for m in messages %}
+                <div class="flash error">{{ m }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if current_user.role in ['clerk', 'manager', 'admin'] %}
+    <div class="card">
+        <h2>Enroll New Equipment</h2>
+        <form action="/add" method="POST">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>SKU *</label>
+                    <input type="text" name="sku" placeholder="EQ-201" required style="width:100px;">
+                </div>
+                <div class="form-group">
+                    <label>Item Name *</label>
+                    <input type="text" name="item_name" placeholder="Item Name" required style="width:160px;">
+                </div>
+                <div class="form-group">
+                    <label>Category *</label>
+                    <input type="text" name="category" placeholder="e.g. PPE, Tools" required style="width:120px;">
+                </div>
+                <div class="form-group">
+                    <label>Specifications</label>
+                    <input type="text" name="specifications" placeholder="Technical details" style="width:200px;">
+                </div>
+                <div class="form-group">
+                    <label>Quantity *</label>
+                    <input type="number" name="item_qty" placeholder="0" required min="0" style="width:75px;">
+                </div>
+                <div class="form-group">
+                    <label>Alert Threshold</label>
+                    <input type="number" name="threshold" placeholder="5" min="1" style="width:75px;">
+                </div>
+                <div class="form-group">
+                    <label>Zone *</label>
+                    <input type="text" name="zone" placeholder="A" required style="width:55px;">
+                </div>
+                <div class="form-group">
+                    <label>Aisle *</label>
+                    <input type="text" name="aisle" placeholder="01" required style="width:55px;">
+                </div>
+                <div class="form-group">
+                    <label>Shelf *</label>
+                    <input type="text" name="shelf" placeholder="S1" required style="width:55px;">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-blue">Add Item</button>
+                </div>
+            </div>
+        </form>
+    </div>
+    {% else %}
+    <div class="role-info">
+        Logged in as <strong>Sales Staff</strong>. You can search and check out items.
+        Contact a Clerk or Manager to enroll new equipment.
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h2>Live Equipment Status
+            {% if search_query %}
+                — results for "{{ search_query }}"
+                <a href="/" style="font-size:0.8rem; color:#2563eb; font-weight:400; margin-left:0.5rem;">clear</a>
+            {% endif %}
+        </h2>
+
+        {% if inventory %}
+        <table>
+            <thead>
+                <tr>
+                    <th>SKU</th>
+                    <th>Item Name</th>
+                    <th>Category</th>
+                    <th>Specifications</th>
+                    <th>Location (Zone / Aisle / Shelf)</th>
+                    <th>Qty</th>
+                    <th>Threshold</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in inventory %}
+                <tr class="{{ 'status-out' if item.status == 'Out of Stock' else ('status-low' if item.status == 'Low' else '') }}">
+                    <td><code>{{ item.sku }}</code></td>
+                    <td><strong>{{ item.name }}</strong></td>
+                    <td>{{ item.category }}</td>
+                    <td class="specs-cell">{{ item.specifications or '—' }}</td>
+                    <td>{{ item.zone }} / {{ item.aisle }} / {{ item.shelf }}</td>
+                    <td><strong>{{ item.qty }}</strong></td>
+                    <td>{{ item.threshold }}</td>
+                    <td>
+                        <span class="status-badge
+                            {{ 'badge-normal' if item.status == 'Normal' else
+                               ('badge-low' if item.status == 'Low' else 'badge-out') }}">
+                            {{ item.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="action-cell">
+                            {% if item.qty > 0 %}
+                            <form method="POST" action="/checkout/{{ item.id }}" class="mini-form">
+                                <input type="number" name="take_qty" placeholder="Qty" required min="1" max="{{ item.qty }}">
+                                <input type="text" name="person" placeholder="Taken by" required>
+                                <button type="submit" class="btn btn-green">Out</button>
+                            </form>
+                            {% else %}
+                            <em style="color:#94a3b8; font-size:0.82rem;">Out of stock</em>
+                            {% endif %}
+                            {% if current_user.role in ['clerk', 'manager', 'admin'] %}
+                            <form method="POST" action="/restock/{{ item.id }}" class="mini-form">
+                                <input type="number" name="add_qty" placeholder="Qty" required min="1">
+                                <input type="text" name="person" placeholder="Received by" required>
+                                <button type="submit" class="btn btn-amber">In</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="no-results">No items found{% if search_query %} for "{{ search_query }}"{% endif %}.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h2>Activity Log</h2>
+        <table class="log-table">
+            <tr><th>Time</th><th>Item</th><th>Action</th><th>Person</th></tr>
+            {% for log in history %}
+            <tr>
+                <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ log.item_name }}</td>
+                <td>{{ log.action }}</td>
+                <td>{{ log.person }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:1rem;">No activity yet.</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+</div>
+</body>
+</html>

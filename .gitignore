@@ -1,0 +1,12 @@
+instance/
+__pycache__/
+*.pyc
+*.pyo
+*.db
+.env
+.venv/
+venv/
+.claude/
+*.pdf
+lesson_rbac.html
+make_pdfs.py
